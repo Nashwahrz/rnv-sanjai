@@ -1,0 +1,238 @@
+@extends('layouts.main')
+
+@section('title', 'Produk - R&V Sanjai')
+
+@section('content')
+<div class="produk-hero">
+    <div class="container text-center">
+        <div class="hero-badge">
+            <i class="fas fa-box-open me-2"></i>Katalog Produk
+        </div>
+        <h1 class="hero-title">Produk Kami</h1>
+        <p class="hero-subtitle">Pilih ukuran sesuai selera dan kebutuhan kamu</p>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        @foreach ($produk as $item)
+            @php $initial_stok = $item->prices->first()->stok ?? 0; @endphp
+            <div class="col-6 col-md-4 col-lg-3 mb-4">
+                <div class="product-card">
+                    <div class="product-image">
+                        <img src="{{ $item->foto ? asset('storage/' . $item->foto) : asset('images/default.png') }}"
+                             alt="{{ $item->nama_produk }}">
+                        @if ($item->jenis_produk == 'manis')
+                            <div class="product-badge">Manis</div>
+                        @elseif($item->jenis_produk == 'pedas')
+                            <div class="product-badge hot">Pedas</div>
+                        @endif
+                    </div>
+
+                    <div class="card-body">
+                        <h5 class="product-title">{{ $item->nama_produk }}</h5>
+                        <p class="text-muted mb-2">{{ $item->deskripsi }}</p>
+
+                        @if ($item->prices->isNotEmpty())
+                            <p id="stok-{{ $item->id }}" class="stok-label {{ $initial_stok > 0 ? 'text-success' : 'text-primary' }}">
+                                @if ($initial_stok > 0)
+                                    <i class="fas fa-check-circle me-1"></i> Stok: {{ $initial_stok }}
+                                @else
+                                    <i class="fas fa-clock me-1"></i> Pre-Order
+                                @endif
+                            </p>
+                        @endif
+
+                        {{-- === FORM PRODUK / LOGIN === --}}
+                        @auth
+                            <form action="{{ route('keranjang.tambah') }}" method="POST" class="order-form">
+                                @csrf
+                                <input type="hidden" name="produk_id" value="{{ $item->id }}">
+
+                                <select name="variasi_id"
+                                        class="form-select mb-3 price-selector"
+                                        data-produk="{{ $item->id }}" required>
+                                    @foreach ($item->prices as $h)
+                                        <option value="{{ $h->id }}"
+                                                data-harga="{{ $h->harga }}"
+                                                data-stok="{{ $h->stok }}">
+                                            {{ $h->berat }} gr - Rp {{ number_format($h->harga, 0, ',', '.') }}
+                                        </option>
+                                    @endforeach
+                                </select>
+
+                                <input type="hidden" name="harga" class="selected-price"
+                                       value="{{ $item->prices->first()->harga ?? 0 }}">
+
+                                <div class="d-flex button-group-produk">
+                                    <a href="{{ route('produk.show', $item->id) }}" class="btn-detail w-100">
+                                        <i class="fas fa-search me-2"></i>Detail
+                                    </a>
+
+                                    @if ($initial_stok > 0)
+                                        <button type="submit" class="btn-action w-100 btn-add-cart" id="btn-action-{{ $item->id }}">
+                                            <i class="fas fa-shopping-cart me-2"></i>Tambah
+                                        </button>
+                                    @else
+                                        <a href="{{ route('preorder.create') }}" class="btn-action w-100 btn-pre-order" id="btn-action-{{ $item->id }}">
+                                            <i class="fas fa-shopping-bag me-2"></i>Pre-Order
+                                        </a>
+                                    @endif
+                                </div>
+                            </form>
+                        @else
+                            <div class="d-flex button-group-produk">
+                                <a href="{{ route('produk.show', $item->id) }}" class="btn-detail w-100">
+                                    <i class="fas fa-search me-2"></i>Detail
+                                </a>
+                                {{-- Tombol langsung arahkan ke login --}}
+                                <a href="{{ route('login') }}" class="btn-action w-100 btn-add-cart" id="btn-action-{{ $item->id }}">
+                                    <i class="fas fa-shopping-cart me-2"></i>Tambah
+                                </a>
+                            </div>
+                        @endauth
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+</div>
+
+{{-- =================== STYLE =================== --}}
+<style>
+    .produk-hero{background:linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%);padding:3rem 0;position:relative}
+    .produk-hero::before{content:'';position:absolute;top:-50%;left:-20%;width:400px;height:400px;background:linear-gradient(135deg,rgba(255,107,53,.1),rgba(255,193,7,.1));border-radius:50%;z-index:1}
+    .hero-badge{display:inline-flex;align-items:center;background:linear-gradient(135deg,#ff6b35,#ffc107);color:white;padding:8px 20px;border-radius:25px;font-size:.9rem;font-weight:600;margin-bottom:1rem;box-shadow:0 4px 15px rgba(255,107,53,.3);position:relative;z-index:2}
+    .hero-title{font-size:2.5rem;font-weight:800;color:#8B4513;margin-bottom:.5rem;position:relative;z-index:2}
+    .hero-subtitle{font-size:1.1rem;color:#6c757d;position:relative;z-index:2}
+    .product-card{background:white;border-radius:15px;overflow:hidden;box-shadow:0 5px 15px rgba(0,0,0,.08);transition:all .3s ease;height:100%;display:flex;flex-direction:column}
+    .product-card:hover{transform:translateY(-5px);box-shadow:0 15px 30px rgba(0,0,0,.15)}
+    .product-image{position:relative;height:200px;overflow:hidden;flex-shrink:0}
+    .product-image img{width:100%;height:100%;object-fit:cover;transition:transform .3s ease}
+    .product-card:hover img{transform:scale(1.05)}
+    .product-badge{position:absolute;top:10px;right:10px;background:#ff4757;color:white;padding:4px 10px;border-radius:15px;font-size:.75rem;font-weight:600}
+    .product-badge.hot{background:#ff6b35}
+    .card-body{padding:1.5rem;flex-grow:1;display:flex;flex-direction:column;justify-content:space-between}
+    .product-title{color:#8B4513;font-weight:600;margin-bottom:.5rem;font-size:1.1rem}
+    .stok-label{font-weight:600;font-size:.9rem}
+    .stok-label.text-success{color:#28a745!important}
+    .stok-label.text-primary{color:#007bff!important}
+    .price-selector{border-radius:8px;border:2px solid #e9ecef;padding:8px 12px;transition:border-color .3s ease;font-size:.9rem}
+    .price-selector:focus{border-color:#ff6b35;box-shadow:0 0 0 .2rem rgba(255,107,53,.25)}
+    .button-group-produk{display:flex;gap:8px}
+    .btn-detail,.btn-action{border:none;padding:10px;border-radius:8px;font-weight:600;display:flex;align-items:center;justify-content:center;transition:all .3s ease;font-size:.85rem;width:100%;text-decoration:none}
+    .btn-detail{background:#6c757d;color:white}
+    .btn-detail:hover{background:#5a6268;color:white;transform:translateY(-1px);box-shadow:0 4px 10px rgba(108,117,125,.3)}
+    .btn-add-cart{background:linear-gradient(135deg,#ff6b35,#ffc107);color:white}
+    .btn-add-cart:hover{background:linear-gradient(135deg,#e55a2b,#e6ac00);transform:translateY(-1px);box-shadow:0 4px 10px rgba(255,107,53,.3)}
+    .btn-pre-order{background:#007bff;color:white}
+    .btn-pre-order:hover{background:#0056b3;color:white;transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,123,255,.3)}
+    @media (max-width:767.98px){
+        .button-group-produk{flex-direction:column;gap:8px}
+        .product-image{height:150px}
+        .product-title{font-size:1rem}
+        .card-body{padding:1rem}
+        .stok-label{font-size:.8rem}
+        .price-selector{font-size:.8rem;padding:6px 8px}
+        .btn-detail,.btn-action{font-size:.75rem;padding:8px 6px}
+    }
+</style>
+
+{{-- =================== SCRIPT =================== --}}
+<script>
+const updateAction = (s) => {
+    const opt = s.options[s.selectedIndex];
+    const stok = +opt.dataset.stok;
+    const id = s.dataset.produk;
+
+    const stokEl = document.getElementById(`stok-${id}`);
+    const priceInput = s.closest('form')?.querySelector('.selected-price');
+    let btn = document.getElementById(`btn-action-${id}`);
+
+    if (!stokEl || !btn || !priceInput) return;
+
+    priceInput.value = opt.dataset.harga;
+
+    if (stok > 0) {
+        stokEl.className = 'stok-label text-success';
+        stokEl.innerHTML = `<i class="fas fa-check-circle me-1"></i> Stok: ${stok}`;
+
+        if (btn.tagName === 'A' && btn.href.includes('preorder')) {
+            const newBtn = document.createElement('button');
+            newBtn.type = 'submit';
+            newBtn.className = 'btn-action w-100 btn-add-cart';
+            newBtn.id = `btn-action-${id}`;
+            newBtn.innerHTML = '<i class="fas fa-shopping-cart me-2"></i>Tambah';
+            btn.replaceWith(newBtn);
+        }
+    } else {
+        stokEl.className = 'stok-label text-primary';
+        stokEl.innerHTML = '<i class="fas fa-clock me-1"></i> Pre-Order';
+
+        if (btn.tagName === 'BUTTON') {
+            const newLink = document.createElement('a');
+            newLink.href = '{{ route("preorder.create") }}';
+            newLink.className = 'btn-action w-100 btn-pre-order';
+            newLink.id = `btn-action-${id}`;
+            newLink.innerHTML = '<i class="fas fa-shopping-bag me-2"></i>Pre-Order';
+            btn.replaceWith(newLink);
+        }
+    }
+};
+
+document.querySelectorAll('.price-selector').forEach(s => {
+    updateAction(s);
+    s.addEventListener('change', () => updateAction(s));
+});
+
+document.querySelectorAll('.order-form').forEach(f => f.addEventListener('submit', async (e) => {
+    const btn = e.submitter || e.target.querySelector('.btn-action');
+    if (btn.tagName === 'A') return; // untuk user belum login
+
+    e.preventDefault();
+
+    const origHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Memproses';
+    btn.style.background = '#007bff';
+
+    const formData = new FormData(e.target);
+
+    try {
+        const response = await fetch(e.target.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': e.target.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json'
+            },
+            body: formData,
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const newCount = result.count || 0;
+            localStorage.setItem('cartCount', newCount);
+            document.dispatchEvent(new Event('cartUpdated'));
+
+            btn.innerHTML = '<i class="fas fa-check me-2"></i>Ditambahkan!';
+            btn.style.background = '#28a745';
+        } else {
+            btn.innerHTML = '<i class="fas fa-times me-2"></i>Gagal!';
+            btn.style.background = '#dc3545';
+            alert('Gagal: ' + (result.message || 'Terjadi kesalahan.'));
+        }
+    } catch (error) {
+        btn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Error';
+        btn.style.background = '#ffc107';
+        alert('Terjadi kesalahan jaringan atau server.');
+    }
+
+    setTimeout(() => {
+        btn.innerHTML = origHTML;
+        btn.style.background = '';
+        btn.disabled = false;
+    }, 1500);
+}));
+</script>
+@endsection
