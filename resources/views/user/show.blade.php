@@ -68,7 +68,8 @@
                     {{-- ========================= --}}
                     {{-- FORM BELI SEKARANG --}}
                     {{-- ========================= --}}
-                    <form action="{{ route('checkout') }}" method="GET" id="form-buy-now">
+                    <form action="{{ route('checkout.proses') }}" method="POST" id="form-buy-now">
+                        @csrf
                         <input type="hidden" name="buy_now" value="1">
                         <input type="hidden" name="produk_id" value="{{ $product->id }}">
                         <input type="hidden" name="variasi_id" id="buynow-variasi-id" value="{{ $product->prices->first()->id }}">
@@ -129,26 +130,29 @@ document.addEventListener('DOMContentLoaded', () => {
             stokDisplay.innerHTML = `<i class="fas fa-clock me-1"></i> Pre Order`;
         }
 
-        // sync value
+        // sync variasi
         addCartVariasi.value = opt.value;
         buyNowVariasi.value = opt.value;
 
+        // sync qty (PENTING)
         addCartQty.value = qty.value;
         buyNowQty.value = qty.value;
     };
 
-    // Atur qty
+    // qty berubah
     qty.addEventListener('input', () => {
         const val = Math.max(1, Number(qty.value) || 1);
         qty.value = val;
+
         addCartQty.value = val;
         buyNowQty.value = val;
     });
 
-    // Variasi berubah
+    // variasi berubah
     select.addEventListener('change', updateUI);
 
     updateUI();
 });
 </script>
+
 @endsection

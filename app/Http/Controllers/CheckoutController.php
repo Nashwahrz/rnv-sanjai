@@ -2,51 +2,67 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CheckoutController extends Controller
 {
     // ==============================
     // HALAMAN CHECKOUT
     // ==============================
-    public function checkout(Request $request)
+    public function proses(Request $request)
     {
-        // Jika ada parameter Beli Sekarang
+        // ============================
+        // MODE BELI SEKARANG
+        // ============================
         if ($request->has(['produk_id', 'variasi_id', 'qty'])) {
 
             $produk = Product::with('prices')->find($request->produk_id);
 
-            if (!$produk) {
-                return redirect()->back()->with('error', 'Produk tidak ditemukan.');
-            }
+            if (!$produk) { abort(404); }
 
-            $variasi = $produk->prices->find($request->variasi_id);
+            $variasi = $produk->prices->where('id', $request->variasi_id)->first();
 
-            if (!$variasi) {
-                return redirect()->back()->with('error', 'Variasi produk tidak ditemukan.');
-            }
+            if (!$variasi) { abort(404); }
 
-            // Keranjang hanya berisi 1 item (checkout langsung)
+            $qty = (int) $request->qty;
+
             $keranjang = [[
-                'produk' => $produk->nama_produk,
-                'gram'   => $variasi->berat . ' gram',
-                'harga'  => $variasi->harga,
-                'qty'    => (int) $request->qty,
-                'total'  => $variasi->harga * (int)$request->qty,
+                'produk'     => $produk->nama_produk,
+                'produk_id'  => $produk->id,
+                'variasi_id' => $variasi->id,
+                'gram'       => $variasi->berat . ' gram',
+                'harga'      => $variasi->harga,     // ← harga pasti benar
+                'qty'        => $qty,
+                'total'      => $variasi->harga * $qty, // ← total dihitung disini
             ]];
+
+            session(['checkout_now' => $keranjang]);
 
             return view('user.checkout', compact('keranjang'));
         }
 
-        // Checkout dari keranjang
+        // ============================
+        // MODE CHECKOUT DARI KERANJANG
+        // ============================
         $keranjang = session('keranjang', []);
+
+        // hitung ulang total (supaya harga pasti benar)
+        foreach ($keranjang as &$item) {
+            $item['total'] = $item['harga'] * $item['qty'];
+        }
+
+        session(['checkout_now' => $keranjang]);
 
         return view('user.checkout', compact('keranjang'));
     }
 
     // ==============================
-    // PROSES CHECKOUT → KIRIM WHATSAPP
+    // PROSES CHECKOUT → SIMPAN DB
     // ==============================
     public function prosesCheckout(Request $request)
     {
@@ -54,34 +70,64 @@ class CheckoutController extends Controller
             'nama'    => 'required|string|max:100',
             'alamat'  => 'required|string|max:255',
             'telepon' => 'required|string|max:20',
+            'metode'  => 'required|string'
         ]);
 
-        $keranjang = session()->get('keranjang', []);
-
+        // Ambil keranjang dari session
+        $keranjang = session('checkout_now', []);
         if (empty($keranjang)) {
-            return redirect()->route('produk')->with('error', 'Keranjang kosong, silakan pilih produk terlebih dahulu.');
+            return back()->with('error', 'Keranjang kosong!');
         }
 
-        // Format WA
+        // Hitung total fix
+        $total = array_sum(array_column($keranjang, 'total'));
+
+        // SIMPAN ORDER
+        $order = Order::create([
+            'user_id'      => Auth::id(),
+            'total_amount' => $total,
+            'status'       => 'pending',
+            'alamat'       => $request->alamat,
+            'no_hp'        => $request->telepon,
+        ]);
+
+        // SIMPAN ORDER ITEMS
+        foreach ($keranjang as $item) {
+            OrderItem::create([
+                'order_id'         => $order->id,
+                'product_id'       => $item['produk_id'],
+                'product_price_id' => $item['variasi_id'],
+                'quantity'         => $item['qty'],
+            ]);
+        }
+
+        // SIMPAN PAYMENT
+        Payment::create([
+            'order_id' => $order->id,
+            'metode'   => $request->metode,
+            'status'   => 'pending',
+            'bukti'    => null,
+        ]);
+
+        // WhatsApp Message
         $pesan = "Halo, saya ingin pesan keripik:\n\n";
 
         foreach ($keranjang as $item) {
-            $pesan .= "- {$item['produk']} ({$item['gram']}) x {$item['qty']} : Rp " . number_format($item['total'], 0, ',', '.') . "\n";
+            $pesan .= "- {$item['produk']} ({$item['gram']}) x {$item['qty']} : Rp "
+                . number_format($item['total'], 0, ',', '.') . "\n";
         }
 
-        $subtotal = array_sum(array_column($keranjang, 'total'));
-        $pesan .= "\nTotal: Rp " . number_format($subtotal, 0, ',', '.') . "\n\n";
-        $pesan .= "Data Pemesan:\n";
+        $pesan .= "\nTotal: Rp " . number_format($total, 0, ',', '.') . "\n\n";
         $pesan .= "Nama: {$request->nama}\n";
         $pesan .= "Alamat: {$request->alamat}\n";
         $pesan .= "Telepon: {$request->telepon}\n";
+        $pesan .= "Order ID: {$order->id}\n";
 
-        $pesan = urlencode($pesan);
-        $nomorAdmin = "6282384522629";
-
-        // Hapus keranjang
+        // Bersihkan session
+        session()->forget('checkout_now');
         session()->forget('keranjang');
 
-        return redirect("https://wa.me/{$nomorAdmin}?text={$pesan}");
+        // Redirect ke WA
+        return redirect("https://wa.me/6282384522629?text=" . urlencode($pesan));
     }
 }

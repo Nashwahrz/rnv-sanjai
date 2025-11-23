@@ -25,22 +25,29 @@
                     @foreach ($keranjang as $index => $item)
                         <div class="cart-item">
                             <div class="item-image">
-                                {{-- Kalau ada foto produk di DB --}}
                                 @if (!empty($item['foto']))
                                     <img src="{{ asset('storage/' . $item['foto']) }}" alt="{{ $item['produk'] }}">
                                 @else
                                     <img src="{{ asset('images/keripik.jpg') }}" alt="{{ $item['produk'] }}">
                                 @endif
                             </div>
+
                             <div class="item-details">
                                 <h6 class="item-name">{{ $item['produk'] }}</h6>
                                 <p class="item-size">
                                     <i class="fas fa-weight-hanging me-1"></i>{{ $item['gram'] }}
                                 </p>
+                                <p class="item-qty text-muted mb-0">
+                                    JUMLAH: <strong>{{ $item['qty'] }}</strong>
+                                </p>
                             </div>
+
                             <div class="item-price">
-                                <strong>Rp {{ number_format($item['harga'], 0, ',', '.') }}</strong>
+                                <strong>
+                                    Rp {{ number_format($item['total'], 0, ',', '.') }}
+                                </strong>
                             </div>
+
                             <div class="item-actions">
                                 <form action="{{ route('keranjang.remove', $index) }}" method="POST" style="display:inline;">
                                     @csrf
@@ -65,21 +72,31 @@
                                 <span>Total Item</span>
                                 <span>{{ count($keranjang) }} produk</span>
                             </div>
+
                             <div class="summary-row">
                                 <span>Subtotal</span>
-                                <span>Rp {{ number_format(array_sum(array_column($keranjang, 'harga')), 0, ',', '.') }}</span>
+                                <span>
+                                    Rp {{ number_format(array_sum(array_column($keranjang, 'total')), 0, ',', '.') }}
+                                </span>
                             </div>
+
                             <div class="summary-row total">
                                 <span>Total</span>
-                                <strong>Rp {{ number_format(array_sum(array_column($keranjang, 'harga')), 0, ',', '.') }}</strong>
+                                <strong>
+                                    Rp {{ number_format(array_sum(array_column($keranjang, 'total')), 0, ',', '.') }}
+                                </strong>
                             </div>
                         </div>
 
                         <div class="checkout-section">
-                            <a href="{{ route('checkout') }}" class="btn-checkout">
-                                <i class="fas fa-credit-card me-2"></i>
-                                Checkout Sekarang
-                            </a>
+                            <form action="{{ route('checkout.proses') }}" method="POST">
+                                @csrf
+                                <button type="submit" class="btn-checkout">
+                                    <i class="fas fa-credit-card me-2"></i>
+                                    Checkout Sekarang
+                                </button>
+                            </form>
+
                             <a href="{{ route('produk') }}" class="btn-continue">
                                 <i class="fas fa-arrow-left me-2"></i>
                                 Lanjut Belanja
@@ -87,6 +104,7 @@
                         </div>
                     </div>
                 </div>
+
             </div>
         @else
             <div class="empty-cart">
@@ -103,6 +121,7 @@
         @endif
     </div>
 
+    {{-- CSS (tidak diubah) --}}
     <style>
         .keranjang-hero{background:linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%);padding:2.5rem 0;position:relative}
         .keranjang-hero::before{content:'';position:absolute;top:-50%;right:-20%;width:300px;height:300px;background:linear-gradient(135deg,rgba(255,107,53,.1),rgba(255,193,7,.1));border-radius:50%;z-index:1}

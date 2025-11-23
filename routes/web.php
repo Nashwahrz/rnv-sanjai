@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeController;
 
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\PreorderController;
 use App\Http\Controllers\KeranjangController;
 
@@ -15,9 +16,16 @@ Route::get('/produk', [HomeController::class, 'produk'])->name('produk');
 // Route::get('/keranjang', [HomeController::class, 'cart'])->name('keranjang');
 // Route::get('/keranjang', [HomeController::class, 'keranjang'])->name('keranjang');
 // Route::post('/keranjang/tambah', [HomeController::class, 'tambahKeranjang'])->name('keranjang.tambah');
-Route::get('/checkout', [HomeController::class, 'checkout'])->name('checkout');
-Route::post('/checkout/proses', [HomeController::class, 'prosesCheckout'])->name('checkout.proses');
+// Route::get('/checkout', [HomeController::class, 'checkout'])->name('checkout');
+// Route::post('/checkout/proses', [HomeController::class, 'prosesCheckout'])->name('checkout.proses');
 Route::get('/products/{id}', [ProductController::class, 'show'])->name('produk.show');
+Route::post('/checkout/proses', [CheckoutController::class, 'proses'])->name('checkout.proses');
+Route::get('/checkout/sukses/{id}', function($id){
+    return view('checkout_sukses', compact('id'));
+})->name('pesanan.sukses');
+Route::post('/checkout/simpan', [CheckoutController::class, 'prosesCheckout'])
+    ->name('checkout.simpan');
+
 
 
 // Keranjang
@@ -54,3 +62,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [AuthController::class, 'profile'])->name('profile');
     Route::post('/profile/update', [AuthController::class, 'updateProfile'])->name('profile.update');
 });
+
+
+// Route::middleware(['auth'])->group(function () {
+//     Route::get('/pesanan-saya', [CheckoutController::class, 'pesananSaya'])
+//         ->name('pesanan.saya');
+// });

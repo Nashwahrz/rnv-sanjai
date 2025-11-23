@@ -11,11 +11,22 @@ class KeranjangController extends Controller
     // ===========================
     // TAMPILKAN ISI KERANJANG
     // ===========================
-    public function index()
-    {
-        $keranjang = session()->get('keranjang', []);
-        return view('user.keranjang', compact('keranjang'));
+ public function index()
+{
+    // session()->forget('keranjang');
+
+    $keranjang = session()->get('keranjang', []);
+
+    $total = 0;
+    foreach ($keranjang as $item) {
+        $total += $item['total'];
     }
+
+    return view('user.keranjang', compact('keranjang', 'total'));
+}
+
+
+
 
     // ==========================================================
     // FUNGSI BARU: Mengambil jumlah item unik di keranjang (untuk AJAX)
@@ -64,13 +75,16 @@ class KeranjangController extends Controller
 
         // 5. Tambah ke session keranjang
         $keranjang = session()->get('keranjang', []);
-        $keranjang[] = [
-            'produk_id' => $produk->id,
-            'produk'    => $produk->nama_produk,
-            'gram'      => $variasi->berat . ' gram',
-            'harga'     => $variasi->harga,
-            'foto'      => $produk->foto ?? null,
-        ];
+      $keranjang[] = [
+    'produk_id' => $produk->id,
+    'produk'    => $produk->nama_produk,
+    'gram'      => $variasi->berat . ' gram',
+    'harga'     => $variasi->harga, // harga satuan
+    'qty'       => $request->qty ?? 1, // default 1
+    'total'     => ($request->qty ?? 1) * $variasi->harga,
+    'foto'      => $produk->foto ?? null,
+];
+
         session()->put('keranjang', $keranjang);
 
         // =============================
