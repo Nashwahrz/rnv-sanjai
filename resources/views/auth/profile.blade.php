@@ -32,7 +32,7 @@
                 <div class="card-body">
                     <form action="{{ route('profile.update') }}" method="POST">
                         @csrf
-                        @method('PUT')
+                        {{-- @method('PUT') --}}
 
                         {{-- Nama --}}
                         <div class="mb-3">
