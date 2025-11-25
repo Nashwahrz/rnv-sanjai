@@ -33,6 +33,13 @@
         @foreach ($orders as $order)
             <div class="card border-0 shadow-sm mb-3 order-card">
                 <div class="card-body p-4">
+                    @php
+                        // Ambil metode pembayaran (asumsi payments adalah relasi hasOne/hasMany)
+                        $payment = $order->payments->first();
+                        $paymentMethod = strtolower($payment->metode ?? 'cod');
+                        $isTransfer = $paymentMethod == 'transfer';
+                    @endphp
+
                     <div class="d-flex justify-content-between align-items-start mb-3">
                         <div>
                             <h5 class="mb-1 fw-bold text-dark">
@@ -41,17 +48,47 @@
                             <small class="text-muted">
                                 <i class="bi bi-calendar3 text-orange"></i> {{ $order->created_at->format('d M Y, H:i') }}
                             </small>
+                            <span class="ms-3 small text-muted">
+                                | Metode: **{{ ucfirst($paymentMethod) }}**
+                            </span>
                         </div>
                         <span class="badge rounded-pill px-3 py-2 status-badge
                             @if($order->status == 'pending') badge-pending
-                            @elseif($order->status == 'diproses') badge-proses
+                            @elseif($order->status == 'proses') badge-proses
                             @elseif($order->status == 'dikirim') badge-kirim
                             @elseif($order->status == 'selesai') badge-selesai
-                            @elseif($order->status == 'batal') badge-batal
+                            @elseif($order->status == 'ditolak') badge-batal
                             @endif">
                             {{ ucfirst($order->status) }}
                         </span>
                     </div>
+
+                    {{-- ================================================= --}}
+                    {{-- LOGIKA TAMPIL BUKTI REFUND (JIKA DITOLAK & TRANSFER) --}}
+                    {{-- ================================================= --}}
+                    @if($order->status == 'ditolak' && $isTransfer && $order->bukti_admin)
+                        <div class="alert alert-danger p-3 mb-3 border-danger bg-light-red">
+                            <h6 class="text-danger fw-bold mb-2">
+                                <i class="bi bi-x-circle-fill"></i> Pesanan Ditolak & Sudah Direfund
+                            </h6>
+                            <p class="small mb-2">
+                                Sejumlah **Rp {{ number_format($order->refund_amount ?? 0, 0, ',', '.') }}** telah dikembalikan.
+                            </p>
+
+                            {{-- Button Bukti Refund --}}
+                            <a href="{{ Storage::url($order->bukti_admin) }}" target="_blank" class="btn btn-sm btn-outline-danger mt-1">
+                                <i class="bi bi-file-earmark-image"></i> Lihat Bukti Refund Admin
+                            </a>
+                        </div>
+                    @elseif($order->status == 'ditolak' && !$isTransfer)
+                        <div class="alert alert-danger p-3 mb-3 border-danger bg-light-red">
+                            <h6 class="text-danger fw-bold mb-0">
+                                <i class="bi bi-x-circle-fill"></i> Pesanan Ditolak (Non-Transfer)
+                            </h6>
+                            <p class="small mb-0">Order ini dibatalkan oleh Admin.</p>
+                        </div>
+                    @endif
+
 
                     {{-- ITEMS --}}
                     <div class="border-top border-bottom py-3 my-3 order-items">
@@ -94,7 +131,7 @@
     @endif
 
 
-    {{-- ======================== PREORDER SECTION ======================== --}}
+    {{-- ======================== PREORDER SECTION (Tidak Berubah) ======================== --}}
     @if(!$preorders->isEmpty())
         <h4 class="fw-bold text-dark mb-3 mt-5">📝 Preorder</h4>
 
@@ -112,8 +149,13 @@
                             </small>
                         </div>
 
-                        <span class="badge rounded-pill px-3 py-2 badge-proses">
-                            Pre-order
+                        <span class="badge rounded-pill px-3 py-2 status-badge
+                            @if($po->status == 'pending') badge-pending
+                            @elseif($po->status == 'proses') badge-proses
+                            @elseif($po->status == 'selesai') badge-selesai
+                            @elseif($po->status == 'ditolak') badge-batal
+                            @endif">
+                            {{ ucfirst($po->status) }}
                         </span>
                     </div>
 
@@ -150,7 +192,7 @@
 
                     <div class="d-flex justify-content-between align-items-center total-section">
                         <span class="text-muted fw-semibold">Status</span>
-                        <h6 class="mb-0 fw-bold text-orange">Menunggu Diproses</h6>
+                        <h6 class="mb-0 fw-bold text-orange">{{ ucfirst($po->status) }}</h6>
                     </div>
 
                 </div>
@@ -165,6 +207,7 @@
 :root {
     --orange-primary: #ff6b35;
     --orange-light: #fff4f0;
+    --red-light: #f8d7da; /* Warna latar belakang untuk pesan error/refund */
 }
 
 .text-orange { color: var(--orange-primary) !important; }
@@ -189,7 +232,11 @@
 .badge-proses { background: #ff6b35; color:#fff; }
 .badge-kirim { background: #17a2b8; color:#fff; }
 .badge-selesai { background: #28a745; color:#fff; }
-.badge-batal { background: #dc3545; color:#fff; }
+.badge-batal { background: #dc3545; color:#fff; } /* Ditolak/Batal */
+
+.bg-light-red {
+    background-color: var(--red-light) !important;
+}
 
 .item-row { border-bottom: 1px dashed #e9ecef; }
 .item-row:last-child { border-bottom: none !important; }
@@ -208,7 +255,7 @@
 }
 @keyframes float {
     0%,100% { transform: translateY(0); }
-    50%     { transform: translateY(-10px); }
+    50%      { transform: translateY(-10px); }
 }
 </style>
 @endsection

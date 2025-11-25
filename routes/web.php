@@ -9,6 +9,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\PreorderController;
 use App\Http\Controllers\KeranjangController;
+use App\Http\Controllers\AdminTransactionController;
 
 Route::get('/', [HomeController::class, 'index'])->name('beranda');
 Route::get('/tentang', [HomeController::class, 'about'])->name('tentang');
@@ -43,6 +44,7 @@ Route::prefix('admin')->group(function () {
     Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->name('admin.products.edit');
     Route::put('/products/{id}', [ProductController::class, 'update'])->name('admin.products.update');
     Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('admin.products.destroy');
+
 });
 
 
@@ -69,3 +71,18 @@ Route::get('/pesanan-saya', [CheckoutController::class, 'pesananSaya'])
 
 Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout');
+
+Route::get('/admin/dashboard', [HomeController::class, 'adminDashboard'])
+    // ->middleware('auth')
+    ->name('admin.dashboard');
+
+Route::get('/admin/all-transactions', [AdminTransactionController::class, 'index'])
+    ->name('admin.transactions');
+
+// routes/web.php (Diubah)
+Route::put('/admin/orders/updateStatus/{id}', [AdminTransactionController::class, 'updateOrderStatus'])
+    ->name('admin.orders.updateStatus');
+
+// Route Preorder juga disesuaikan agar konsisten (Opsional, tapi disarankan)
+Route::put('/admin/preorders/updateStatus/{id}', [AdminTransactionController::class, 'updatePreorderStatus'])
+    ->name('admin.preorders.updateStatus');

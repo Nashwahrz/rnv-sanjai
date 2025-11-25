@@ -102,6 +102,7 @@
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            min-height: 80vh; /* Tambahan untuk memastikan konten terisi */
         }
 
         /* Dropdown Styles */
@@ -199,16 +200,25 @@
             <div class="logo">
                 Admin R&V Sanjai
             </div>
-            <a href="{{ route('admin.products.index') }}" class="active"><i class="fas fa-box"></i> Kelola Produk</a>
-            <a href="#"><i class="fas fa-shopping-cart"></i> Pesanan</a>
-            <a href="#"><i class="fas fa-chart-line"></i> Laporan</a>
+
+            {{-- MODIFIKASI: Menambahkan link Dashboard dan menggunakan request()->routeIs untuk active class --}}
+            <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+
+            {{-- Mengubah class="active" menjadi dinamis --}}
+            <a href="{{ route('admin.products.index') }}" class="{{ request()->routeIs('admin.products.index') ? 'active' : '' }}"><i class="fas fa-box"></i> Kelola Produk</a>
+
+         <a href="{{ route('admin.transactions') }}" class="{{ request()->routeIs('admin.transactions') ? 'active' : '' }}">
+    <i class="fas fa-shopping-cart"></i> Pesanan
+</a>
+
+            <a href="#" class="{{ request()->routeIs('admin.reports.index') ? 'active' : '' }}"><i class="fas fa-chart-line"></i> Laporan</a>
             {{-- <a href="#"><i class="fas fa-cog"></i> Pengaturan</a> --}}
         </div>
 
         <div class="main-content-area">
             <div class="top-bar">
                 <div class="d-none d-md-block">
-                    <div class="logo-desktop" style="font-size: 1.1rem; font-weight: 700; color: var(--primary-dark);">Admin R&V Sanjai</div>
+                    <div class="logo-desktop" style="font-size: 1.1rem; font-weight: 700; color: var(--primary-dark);">@yield('title', 'Admin R&V Sanjai')</div>
                 </div>
                 <div class="d-md-none">
                     <div class="logo-mobile" style="font-size: 1.1rem; font-weight: 700; color: var(--primary-dark);">Admin R&V Sanjai</div>
@@ -237,20 +247,28 @@
 
     <nav class="bottom-nav d-md-none">
         <ul>
+            {{-- MODIFIKASI: Menambahkan Dashboard di mobile nav --}}
             <li>
-                <a href="{{ route('admin.products.index') }}" class="active">
+                <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dash.</span>
+                </a>
+            </li>
+            {{-- Mengubah class="active" menjadi dinamis --}}
+            <li>
+                <a href="{{ route('admin.products.index') }}" class="{{ request()->routeIs('admin.products.index') ? 'active' : '' }}">
                     <i class="fas fa-box"></i>
                     <span>Produk</span>
                 </a>
             </li>
             <li>
-                <a href="#">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Pesanan</span>
-                </a>
+                <a href="{{ route('admin.transactions') }}" class="{{ request()->routeIs('admin.transactions') ? 'active' : '' }}">
+    <i class="fas fa-shopping-cart"></i> Pesanan
+</a>
+
             </li>
             <li>
-                <a href="#">
+                <a href="#" class="{{ request()->routeIs('admin.reports.index') ? 'active' : '' }}">
                     <i class="fas fa-chart-line"></i>
                     <span>Laporan</span>
                 </a>

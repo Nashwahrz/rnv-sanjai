@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Preorder;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
@@ -108,4 +111,49 @@ class HomeController extends Controller
         // Redirect ke WhatsApp
         return redirect("https://wa.me/{$nomorAdmin}?text={$pesan}");
     }
+  public function adminDashboard()
+{
+    // Total pesanan masuk
+    $totalOrders = Order::count();
+
+    // Total pendapatan dari tabel orders
+    $totalOrderRevenue = Order::sum('total_amount');
+
+    // Total pendapatan dari tabel preorders
+    $totalPreOrderRevenue = Preorder::with('price')
+        ->get()
+        ->sum(function ($item) {
+            return $item->price->harga * $item->qty;
+        });
+
+    // Gabungkan pendapatan orders + preorders
+    $totalRevenue = $totalOrderRevenue + $totalPreOrderRevenue;
+
+    // Pesanan pending
+    $pendingOrders = Order::where('status', 'pending')->count();
+
+    // Produk terlaris
+    $bestProduct = OrderItem::select('product_id')
+        ->selectRaw('SUM(quantity) as total_sold')
+        ->with('product')
+        ->groupBy('product_id')
+        ->orderByDesc('total_sold')
+        ->first();
+
+    // Pesanan terbaru
+    $latestOrders = Order::with('user')
+        ->latest()
+        ->take(5)
+        ->get();
+
+    return view('admin.dashboard', compact(
+        'totalOrders',
+        'totalRevenue',
+        'pendingOrders',
+        'bestProduct',
+        'latestOrders'
+    ));
+}
+
+
 }

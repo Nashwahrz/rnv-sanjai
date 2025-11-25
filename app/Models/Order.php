@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     protected $fillable = [
-        'user_id', 'total_amount', 'status', 'alamat', 'no_hp'
+        'user_id', 'total_amount', 'status', 'refund_amount', 'bukti_admin', 'alamat', 'no_hp',
     ];
 
     public function payments(){
@@ -16,6 +16,10 @@ class Order extends Model
     public function items()
 {
     return $this->hasMany(OrderItem::class, 'order_id');
+}
+public function user()
+{
+    return $this->belongsTo(User::class, 'user_id');
 }
 
 }
