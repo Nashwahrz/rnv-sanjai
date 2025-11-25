@@ -7,95 +7,127 @@ use App\Models\Preorder;
 use App\Models\ProductPrice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log; // ✅ Perbaikan di sini
+use Illuminate\Support\Facades\Log;
 
 class PreorderController extends Controller
 {
     /**
-     * Tampilkan form pre-order
+     * FORM PREORDER
      */
-    public function create(Request $request, $priceId = null)
+    public function create(Request $request)
     {
-        // 🔒 Pastikan user sudah login
+        // Pastikan user login
         if (!Auth::check()) {
             return redirect()->route('login')
                 ->with('error', 'Silakan login terlebih dahulu untuk melakukan pre-order.');
         }
 
-        // 1️⃣ Ambil ID dari URL atau query string
-        $idToUse = $priceId ?? $request->query('price_id');
+        // Ambil variasi_id dari URL
+        $variasiId = $request->query('variasi_id');
 
-        // 2️⃣ Jika ID kosong
-        if (!$idToUse) {
+        // Validasi
+        if (!$variasiId) {
             return redirect()->route('produk')
                 ->with('error', 'Variasi produk tidak ditentukan. Silakan pilih produk terlebih dahulu.');
         }
 
-        // 3️⃣ Ambil data variasi produk
-        $price = ProductPrice::with('product')->find($idToUse);
+        // Ambil data variasi
+        $price = ProductPrice::with('product')->find($variasiId);
 
         if (!$price) {
             return redirect()->route('produk')
                 ->with('error', 'Data variasi produk tidak ditemukan atau tidak valid.');
         }
 
-        // ✅ Kirim data ke view
-        return view('preorder.create', compact('price'));
+        // Qty default = 1 jika tidak dikirim
+        $qty = $request->query('qty', 1);
+
+        return view('preorder.create', compact('price', 'qty'));
     }
 
     /**
-     * Simpan data pre-order
+     * SIMPAN PREORDER
      */
-    public function store(Request $request)
-    {
-        // 🔒 Pastikan user login
-        if (!Auth::check()) {
-            return redirect()->route('login')
-                ->with('error', 'Silakan login terlebih dahulu untuk melakukan pre-order.');
-        }
+   public function store(Request $request)
+{
+    if (!Auth::check()) {
+        return redirect()->route('login')
+            ->with('error', 'Silakan login terlebih dahulu untuk melakukan pre-order.');
+    }
 
-        // 🧾 Validasi input
-        $validated = $request->validate([
-            'price_id' => 'required|exists:product_prices,id',
-            'deskripsi' => 'nullable|string|max:255',
+    $validated = $request->validate([
+        'price_id'  => 'required|exists:product_prices,id',
+        'qty'       => 'required|integer|min:1',
+        'deskripsi' => 'nullable|string|max:255',
+    ]);
+
+    $user = Auth::user();
+
+    try {
+        $price = ProductPrice::with('product')->findOrFail($validated['price_id']);
+    } catch (\Exception $e) {
+        return back()->with('error', 'Variasi produk tidak ditemukan. Pre-order dibatalkan.');
+    }
+
+    // $existing = Preorder::where('user_id', $user->id)
+    //     ->where('price_id', $price->id)
+    //     ->first();
+
+    // if ($existing) {
+    //     return back()->with('warning', 'Kamu sudah melakukan pre-order untuk variasi ini.');
+    // }
+
+    try {
+
+        // Simpan ke database
+        $preorder = Preorder::create([
+            'user_id'          => $user->id,
+            'price_id'         => $price->id,
+            'qty'              => $validated['qty'],
+            'tanggal_preorder' => Carbon::now()->toDateString(),
+            'deskripsi'        => $validated['deskripsi'] ?? null,
         ]);
 
-        $user = Auth::user();
+        // ======================================
+        // 🔥 KIRIM KE WHATSAPP ADMIN
+        // ======================================
 
-        try {
-            $price = ProductPrice::findOrFail($validated['price_id']);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return back()->with('error', 'Variasi produk tidak ditemukan. Pre-order dibatalkan.');
-        }
+        $adminNumber = "6285165755238"; // nomor admin (format internasional tanpa +)
 
-        // 🔍 Cek duplikasi
-        $existing = Preorder::where('user_id', $user->id)
-            ->where('price_id', $price->id)
-            ->first();
+        $message = "📌 *PRE-ORDER BARU MASUK* 📌\n\n"
+            . "*Nama:* {$user->name}\n"
+            . "*Email:* {$user->email}\n"
+            . "*No Telp:* {$user->no_telp}\n"
+            . "*Alamat:* {$user->alamat}\n\n"
 
-        if ($existing) {
-            return back()->with('warning', 'Kamu sudah melakukan pre-order untuk variasi ini.');
-        }
+            . "=====================\n"
+            . "*Detail Pre-Order*\n"
+            . "=====================\n"
+            . "*Produk:* {$price->product->nama_produk}\n"
+            . "*Variasi:* {$price->variasi}\n"
+            . "*Qty:* {$preorder->qty}\n"
+            . "*Tanggal:* {$preorder->tanggal_preorder}\n"
+            . "*Catatan:* {$preorder->deskripsi}\n\n"
 
-        try {
-            // 💾 Simpan data preorder
-            Preorder::create([
-                'user_id'           => $user->id,
-                'price_id'          => $price->id,
-                'tanggal_preorder'  => Carbon::now()->toDateString(),
-                'deskripsi'         => $validated['deskripsi'] ?? null,
-            ]);
+            . "Silakan diproses 🙏";
 
-            return redirect()->route('produk')
-                ->with('success', 'Pre-order berhasil dibuat! Kami akan menghubungi kamu saat produk tersedia.');
-        } catch (\Exception $e) {
-            // 🔴 Log error untuk debugging
-            Log::error('Preorder Store Error: ' . $e->getMessage(), [
-                'user_id' => $user->id ?? null,
-                'price_id' => $validated['price_id'] ?? null,
-            ]);
+        // Encode pesan ke URL
+        $waUrl = "https://wa.me/{$adminNumber}?text=" . urlencode($message);
 
-            return back()->with('error', 'Terjadi kesalahan saat membuat pre-order. Silakan coba lagi.');
-        }
+        // Redirect user ke WA admin
+        return redirect($waUrl);
+
+        // ======================================
+
+    } catch (\Exception $e) {
+
+        Log::error('Preorder Store Error: ' . $e->getMessage(), [
+            'user_id'  => $user->id,
+            'price_id' => $validated['price_id'],
+        ]);
+
+        return back()->with('error', 'Terjadi kesalahan saat membuat pre-order. Silakan coba lagi.');
     }
+}
+
 }

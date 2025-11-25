@@ -77,6 +77,7 @@ class KeranjangController extends Controller
         $keranjang = session()->get('keranjang', []);
       $keranjang[] = [
     'produk_id' => $produk->id,
+    'variasi_id' => $variasi->id,
     'produk'    => $produk->nama_produk,
     'gram'      => $variasi->berat . ' gram',
     'harga'     => $variasi->harga, // harga satuan

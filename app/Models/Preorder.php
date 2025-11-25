@@ -11,6 +11,7 @@ class Preorder extends Model
     protected $fillable = [
         'user_id',
         'price_id',
+        'qty',
         'tanggal_preorder',
         'deskripsi',
     ];

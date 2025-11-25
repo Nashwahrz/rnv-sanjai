@@ -23,6 +23,8 @@ class User extends Authenticatable
         'password',
         'role',
         'alamat',
+        'latitude',
+        'longitude',
         'no_hp'
     ];
 

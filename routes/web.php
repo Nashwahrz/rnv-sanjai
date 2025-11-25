@@ -64,7 +64,8 @@ Route::middleware('auth')->group(function () {
 });
 
 
-// Route::middleware(['auth'])->group(function () {
-//     Route::get('/pesanan-saya', [CheckoutController::class, 'pesananSaya'])
-//         ->name('pesanan.saya');
-// });
+Route::get('/pesanan-saya', [CheckoutController::class, 'pesananSaya'])
+    ->name('pesanan.saya');
+
+Route::post('/logout', [AuthController::class, 'logout'])
+    ->name('logout');

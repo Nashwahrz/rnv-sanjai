@@ -66,18 +66,12 @@
                     </form>
 
                     {{-- ========================= --}}
-                    {{-- FORM BELI SEKARANG --}}
+                    {{-- TOMBOL BELI SEKARANG / PRE ORDER (TIDAK LAGI DALAM FORM) --}}
                     {{-- ========================= --}}
-                    <form action="{{ route('checkout.proses') }}" method="POST" id="form-buy-now">
-                        @csrf
-                        <input type="hidden" name="buy_now" value="1">
-                        <input type="hidden" name="produk_id" value="{{ $product->id }}">
-                        <input type="hidden" name="variasi_id" id="buynow-variasi-id" value="{{ $product->prices->first()->id }}">
-                        <input type="hidden" name="qty" id="buynow-qty" value="1">
-                        <button type="submit" class="btn btn-lg btn-danger w-100">
-                            <i class="fas fa-bolt me-2"></i> Beli Sekarang
-                        </button>
-                    </form>
+                    {{-- Hapus form yang ada sebelumnya, dan ganti dengan satu elemen div untuk menampung kedua tombol/link --}}
+                    <div id="buy-action-container">
+                        {{-- Button/Link akan di-render di sini oleh JavaScript --}}
+                    </div>
 
                     {{-- KEMBALI --}}
                     <a href="{{ route('produk') }}" class="btn btn-outline-secondary w-100 mt-3">
@@ -100,6 +94,8 @@
 .text-rvsanjai-primary { color:#ff6b35; }
 .btn-pesan-sekarang { background:#ff6b35; color:white; }
 .btn-pesan-sekarang:hover { background:#e55a2b; }
+.btn-pre-order { background:#007bff; color:white; } /* Warna biru untuk Pre Order */
+.btn-pre-order:hover { background:#0056b3; }
 </style>
 
 {{-- SCRIPT --}}
@@ -114,14 +110,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const addCartVariasi = document.getElementById('addcart-variasi-id');
     const addCartQty = document.getElementById('addcart-qty');
 
-    const buyNowVariasi = document.getElementById('buynow-variasi-id');
-    const buyNowQty = document.getElementById('buynow-qty');
+    // Container untuk tombol Beli Sekarang / Pre Order
+    const buyActionContainer = document.getElementById('buy-action-container');
+
+    // Variabel untuk menyimpan rute Pre Order (Ganti 'preorder.show' dengan rute yang benar)
+    const preorderUrl = '{{ route('preorder.create') }}';
+
 
     const updateUI = () => {
         const opt = select.options[select.selectedIndex];
         const stok = Number(opt.dataset.stok);
+        const variasiId = opt.value;
+        const currentQty = qty.value;
 
-        // stok label
+        // 1. STOK LABEL
         if (stok > 0) {
             stokDisplay.className = "text-success fw-semibold";
             stokDisplay.innerHTML = `<i class="fas fa-check-circle me-1"></i> Stok tersedia (${stok})`;
@@ -130,13 +132,42 @@ document.addEventListener('DOMContentLoaded', () => {
             stokDisplay.innerHTML = `<i class="fas fa-clock me-1"></i> Pre Order`;
         }
 
-        // sync variasi
-        addCartVariasi.value = opt.value;
-        buyNowVariasi.value = opt.value;
+        // 2. SINKRONISASI VARIABEL FORM KERANJANG
+        addCartVariasi.value = variasiId;
+        addCartQty.value = currentQty;
 
-        // sync qty (PENTING)
-        addCartQty.value = qty.value;
-        buyNowQty.value = qty.value;
+        // 3. LOGIKA TOMBOL BELI SEKARANG / PRE ORDER
+        buyActionContainer.innerHTML = ''; // Bersihkan container
+
+        if (stok > 0) {
+            // Jika stok > 0: Tampilkan tombol 'Beli Sekarang' dalam form submit
+            buyActionContainer.innerHTML = `
+                <form action="{{ route('checkout.proses') }}" method="POST" id="form-buy-now">
+                    @csrf
+                    <input type="hidden" name="buy_now" value="1">
+                    <input type="hidden" name="produk_id" value="{{ $product->id }}">
+                    <input type="hidden" name="variasi_id" id="buynow-variasi-id" value="${variasiId}">
+                    <input type="hidden" name="qty" id="buynow-qty" value="${currentQty}">
+                    <button type="submit" class="btn btn-lg btn-danger w-100">
+                        <i class="fas fa-bolt me-2"></i> Beli Sekarang
+                    </button>
+                </form>
+            `;
+            // Sinkronkan kembali input hidden (meskipun sudah diset di atas, ini untuk memastikan)
+            document.getElementById('buynow-variasi-id').value = variasiId;
+            document.getElementById('buynow-qty').value = currentQty;
+
+        } else {
+            // Jika stok = 0: Tampilkan tombol 'Pre Order' sebagai tautan
+            // Variasi dan Qty akan di passing via query parameter
+            const preOrderLink = `${preorderUrl}?produk_id={{ $product->id }}&variasi_id=${variasiId}&qty=${currentQty}`;
+
+            buyActionContainer.innerHTML = `
+                <a href="${preOrderLink}" class="btn btn-lg btn-primary w-100 btn-pre-order">
+                    <i class="fas fa-box me-2"></i> Pre Order
+                </a>
+            `;
+        }
     };
 
     // qty berubah
@@ -144,13 +175,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const val = Math.max(1, Number(qty.value) || 1);
         qty.value = val;
 
+        // Sinkronkan nilai qty ke semua input hidden
         addCartQty.value = val;
-        buyNowQty.value = val;
+
+        // Panggil updateUI untuk memperbarui tombol "Beli Sekarang" / "Pre Order" dengan qty terbaru
+        updateUI();
     });
 
     // variasi berubah
     select.addEventListener('change', updateUI);
 
+    // Inisialisasi tampilan
     updateUI();
 });
 </script>

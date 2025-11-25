@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\Preorder;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
@@ -128,6 +129,22 @@ class CheckoutController extends Controller
         session()->forget('keranjang');
 
         // Redirect ke WA
-        return redirect("https://wa.me/6282384522629?text=" . urlencode($pesan));
+        return redirect("https://wa.me/6285165755238?text=" . urlencode($pesan));
     }
+public function pesananSaya()
+{
+    $orders = Order::with(['items.product', 'items.price'])
+        ->where('user_id', Auth::id())
+        ->latest()
+        ->get();
+
+  $preorders = Preorder::where('user_id', Auth::id())
+    ->latest()
+    ->get();
+
+
+    return view('user.pesanan', compact('orders', 'preorders'));
+}
+
+
 }

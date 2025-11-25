@@ -48,14 +48,17 @@ class AuthController extends Controller
      * 🔹 Logout user
      */
     public function logout(Request $request)
-    {
-        Auth::logout();
+{
+    Auth::logout();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+    // Hapus session
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
 
-        return redirect()->route('login')->with('success', 'Anda telah logout.');
-    }
+    // Redirect ke login + pesan sukses
+    return redirect()->route('login.post')->with('success', 'Berhasil logout!');
+}
+
 
     /**
      * 🔹 Tampilkan form register
@@ -109,12 +112,15 @@ public function profile()
 
 public function updateProfile(Request $request)
 {
-    $request->validate([
-        'name'   => 'required|string|max:100',
-        'email'  => 'required|email|unique:users,email,' . Auth::id(),
-        'alamat' => 'nullable|string|max:255',
-        'no_hp'  => 'nullable|string|max:20',
-    ]);
+   $request->validate([
+    'name'      => 'required|string|max:100',
+    'email'     => 'required|email|unique:users,email,' . Auth::id(),
+    'alamat'    => 'nullable|string|max:255',
+    'latitude'  => 'nullable|numeric',
+    'longitude' => 'nullable|numeric',
+    'no_hp'     => 'nullable|string|max:20',
+]);
+
 
     $user = Auth::user();
 
@@ -122,6 +128,8 @@ public function updateProfile(Request $request)
         'name'   => $request->name,
         'email'  => $request->email,
         'alamat' => $request->alamat,
+        'latitude'  => $request->latitude,
+        'longitude' => $request->longitude,
         'no_hp'  => $request->no_hp,
     ]);
 

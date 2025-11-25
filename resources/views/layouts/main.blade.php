@@ -105,9 +105,29 @@
 
     <!-- Ikon Profil Mobile -->
     <div class="mobile-cart-wrapper">
-        <a href="{{ route('profile') }}" class="text-decoration-none">
-            <i class="fas fa-user-circle mobile-cart-icon"></i>
-        </a>
+       <div class="dropdown">
+    <a class="text-decoration-none" href="#" data-bs-toggle="dropdown">
+        <i class="fas fa-user-circle mobile-cart-icon"></i>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item"
+   href="{{ Auth::check() ? route('profile') : route('login.post') }}">
+   {{ Auth::check() ? 'Lihat Profil' : 'Login' }}
+</a>
+
+</li>
+      @auth
+<li>
+    <form action="{{ route('logout') }}" method="POST">
+        @csrf
+        <button type="submit" class="dropdown-item text-danger">Logout</button>
+    </form>
+</li>
+@endauth
+
+    </ul>
+</div>
+
     </div>
 
     <!-- Ikon Keranjang Mobile -->
@@ -129,9 +149,10 @@
                     {{-- Loop Navigasi (Asumsi Anda akan memindahkan ini ke partial nanti) --}}
                     @php
                         $menus = [
-                            ['beranda', 'fas fa-home', 'Beranda'],
+                            ['beranda', 'fas fa-home', 'home'],
                             ['tentang', 'fas fa-info-circle', 'Tentang'],
                             ['produk', 'fas fa-box', 'Produk'],
+                            ['pesanan.saya', 'fas fa-shopping-bag', 'Pesanan saya'],
                         ];
                         $currentRoute = Route::currentRouteName();
                     @endphp
@@ -146,11 +167,29 @@
                             </a>
                         </li>
                     @endforeach
-                    <li class="nav-item d-none d-lg-block">
-    <a class="nav-link" href="{{ route('profile') }}">
+                    <li class="nav-item dropdown d-none d-lg-block">
+    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
         <i class="fas fa-user-circle me-1"></i> Profil
     </a>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item"
+   href="{{ Auth::check() ? route('profile') : route('login.post') }}">
+   {{ Auth::check() ? 'Lihat Profil' : 'Login' }}
+</a>
+
 </li>
+       @auth
+<li>
+    <form action="{{ route('logout') }}" method="POST">
+        @csrf
+        <button type="submit" class="dropdown-item text-danger">Logout</button>
+    </form>
+</li>
+@endauth
+
+    </ul>
+</li>
+
 
 
                     <li class="nav-item d-none d-lg-block">
@@ -188,14 +227,18 @@
                 </div>
 
                 <div class="col-lg-2 col-md-6 mb-4">
-                    <div class="footer-links">
-                        <h5>Menu</h5>
-                        <a href="{{ route('beranda') }}">Beranda</a>
-                        <a href="{{ route('tentang') }}">Tentang</a>
-                        <a href="{{ route('produk') }}">Produk</a>
-                        <a href="{{ route('keranjang.index') }}">Keranjang</a>
-                    </div>
-                </div>
+    <div class="footer-links">
+        <h5>Menu</h5>
+        <a href="{{ route('beranda') }}">Homeee</a>
+        <a href="{{ route('tentang') }}">Tentang</a>
+        <a href="{{ route('produk') }}">Produk</a>
+        <a href="{{ route('keranjang.index') }}">Keranjang</a>
+
+        <a href="{{ route('pesanan.saya') }}">Pesanan Saya</a>
+
+    </div>
+</div>
+
 
                 <div class="col-lg-3 col-md-6 mb-4">
                     <div class="footer-links">
