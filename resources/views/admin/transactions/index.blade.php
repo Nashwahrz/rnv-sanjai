@@ -2,28 +2,6 @@
 
 @section('title', 'Kelola Orders & Preorders')
 
-{{-- Tambahkan Style untuk mengatasi ikon pagination yang rusak (hanya untuk panah) --}}
-@push('styles')
-<style>
-    /* Mengatasi ikon pagination yang gagal dimuat (tampil besar) */
-    .pagination .page-link svg {
-        display: none !important; /* Sembunyikan SVG/ikon bawaan yang rusak */
-    }
-
-    /* Tampilkan teks 'Previous' dan 'Next' sebagai fallback yang aman dan kecil */
-    .pagination .page-link span[aria-hidden="true"] {
-        font-size: 0.8rem; /* Jadikan ukuran font lebih kecil agar rapi */
-        font-weight: bold;
-    }
-
-    /* Perbaikan kecil: mengatur jarak antara tabel dan pagination */
-    .pagination {
-        margin-top: 10px;
-        margin-bottom: 0;
-    }
-</style>
-@endpush
-
 @section('content')
 <div class="container py-4">
     <h3 class="mb-4">Kelola Semua Transaksi</h3>
@@ -42,7 +20,7 @@
         </div>
     @endif
 
-    <hr>
+    ---
 
     {{-- ==========================
         TABEL ORDERS
@@ -53,139 +31,127 @@
         </div>
 
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped table-hover table-sm">
-                    <thead>
+            <table class="table table-bordered table-striped">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Pemesan</th>
+                    <th>Total</th>
+                    <th>Metode</th>
+                    <th>Status</th>
+                    <th>Update Status</th>
+                    <th>Tanggal</th>
+                </tr>
+                </thead>
+                <tbody>
+                @forelse($orders as $order)
                     <tr>
-                        <th>#</th>
-                        <th>Pemesan</th>
-                        <th>Total</th>
-                        <th>Metode</th>
-                        <th>Status</th>
-                        <th>Update Status</th>
-                        <th>Tanggal</th>
+                        <td>{{ ($orders->currentPage() - 1) * $orders->perPage() + $loop->iteration }}</td>
+                        <td>{{ $order->user->name ?? '-' }}</td>
+                        <td>Rp {{ number_format($order->total_amount, 0, ',', '.') }}</td>
+
+                        {{-- PERBAIKAN PENTING: Akses relasi 'payments' sebagai koleksi dan ambil item pertama --}}
+                        <td>{{ ucfirst($order->payments->first()->metode ?? 'N/A') }}</td>
+
+                        <td>{{ ucfirst($order->status) }}</td>
+
+                        {{-- Dropdown Status Order --}}
+                        <td>
+                            @php
+                                // PERBAIKAN PENTING: Ambil metode dari relasi payments->first()
+                                $paymentMethod = strtolower($order->payments->first()->metode ?? 'cash');
+                            @endphp
+                            <select class="form-select form-select-sm"
+                                data-current-status="{{ $order->status }}"
+                                onchange="handleOrderStatusChange(this, {{ $order->id }}, {{ $order->total_amount }}, '{{ $paymentMethod }}')">
+
+                                <option value="pending"  {{ $order->status == 'pending' ? 'selected' : '' }}>Pending</option>
+                                <option value="proses"   {{ $order->status == 'proses' ? 'selected' : '' }}>Proses</option>
+                                <option value="selesai"  {{ $order->status == 'selesai' ? 'selected' : '' }}>Selesai</option>
+                                <option value="ditolak"  {{ $order->status == 'ditolak' ? 'selected' : '' }}>Ditolak</option>
+                            </select>
+                        </td>
+
+                        <td>{{ $order->created_at->format('d M Y') }}</td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    @forelse($orders as $order)
-                        <tr>
-                            <td>{{ ($orders->currentPage() - 1) * $orders->perPage() + $loop->iteration }}</td>
-                            <td>{{ $order->user->name ?? '-' }}</td>
-                            <td>**Rp {{ number_format($order->total_amount, 0, ',', '.') }}**</td>
+                @empty
+                    <tr>
+                        <td colspan="7" class="text-center">Belum ada order</td>
+                    </tr>
+                @endforelse
+                </tbody>
+            </table>
 
-                            <td>{{ ucfirst($order->payments->first()->metode ?? 'N/A') }}</td>
-
-                            <td><span class="badge bg-{{ $order->status == 'selesai' ? 'success' : ($order->status == 'ditolak' ? 'danger' : ($order->status == 'proses' ? 'primary' : 'warning')) }}">{{ ucfirst($order->status) }}</span></td>
-
-                            {{-- Dropdown Status Order --}}
-                            <td>
-                                @php
-                                    $paymentMethod = strtolower($order->payments->first()->metode ?? 'cash');
-                                @endphp
-                                <select class="form-select form-select-sm"
-                                    data-current-status="{{ $order->status }}"
-                                    onchange="handleOrderStatusChange(this, {{ $order->id }}, {{ $order->total_amount }}, '{{ $paymentMethod }}')">
-
-                                    <option value="pending"  {{ $order->status == 'pending' ? 'selected' : '' }}>Pending</option>
-                                    <option value="proses"   {{ $order->status == 'proses' ? 'selected' : '' }}>Proses</option>
-                                    <option value="selesai"  {{ $order->status == 'selesai' ? 'selected' : '' }}>Selesai</option>
-                                    <option value="ditolak"  {{ $order->status == 'ditolak' ? 'selected' : '' }}>Ditolak</option>
-                                </select>
-                            </td>
-
-                            <td>{{ $order->created_at->format('d M Y') }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="text-center">Belum ada order</td>
-                        </tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            {{-- Pagination untuk Orders --}}
-            <div class="d-flex justify-content-end mt-3">
-                {{ $orders->appends(['preorders_page' => request('preorders_page')])->links() }}
-            </div>
+            {{ $orders->appends(['preorders_page' => request('preorders_page')])->links() }}
         </div>
     </div>
 
-    <hr>
+    ---
 
-    {{-- ==========================
-        TABEL PREORDERS
-    ========================== --}}
+    {{-- TABEL PREORDERS (Tidak ada perubahan) --}}
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white">
             <h5 class="mb-0">Preorders</h5>
         </div>
 
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped table-hover table-sm">
-                    <thead>
+            <table class="table table-bordered table-striped">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Pemesan</th>
+                    <th>Produk</th>
+                    <th>Harga</th>
+                    <th>Qty</th>
+                    <th>Status</th>
+                    <th>Update Status</th>
+                    <th>Total</th>
+                    <th>Tanggal</th>
+                </tr>
+                </thead>
+                <tbody>
+                @forelse($preorders as $item)
                     <tr>
-                        <th>#</th>
-                        <th>Pemesan</th>
-                        <th>Produk</th>
-                        <th>Harga</th>
-                        <th>Qty</th>
-                        <th>Status</th>
-                        <th>Update Status</th>
-                        <th>Total</th>
-                        <th>Tanggal</th>
+                        <td>{{ ($preorders->currentPage() - 1) * $preorders->perPage() + $loop->iteration }}</td>
+                        <td>{{ $item->user->name ?? '-' }}</td>
+                        <td>{{ $item->price->nama_harga ?? '-' }}</td>
+                        <td>Rp {{ number_format($item->price->harga ?? 0, 0, ',', '.') }}</td>
+                        <td>{{ $item->qty }}</td>
+
+                        <td>{{ ucfirst($item->status) }}</td>
+
+                        {{-- Dropdown Status Preorder (Submit Form Biasa) --}}
+                        <td>
+                            <form action="{{ route('admin.preorders.updateStatus', $item->id) }}" method="POST">
+                                @csrf
+                                @method('PUT')
+                                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <option value="pending"  {{ $item->status == 'pending' ? 'selected' : '' }}>Pending</option>
+                                    <option value="proses"   {{ $item->status == 'proses' ? 'selected' : '' }}>Proses</option>
+                                    <option value="selesai"  {{ $item->status == 'selesai' ? 'selected' : '' }}>Selesai</option>
+                                    <option value="ditolak"  {{ $item->status == 'ditolak' ? 'selected' : '' }}>Ditolak</option>
+                                </select>
+                            </form>
+                        </td>
+
+                        <td>Rp {{ number_format(($item->price->harga ?? 0) * $item->qty, 0, ',', '.') }}</td>
+                        <td>{{ $item->created_at->format('d M Y') }}</td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    @forelse($preorders as $item)
-                        <tr>
-                            <td>{{ ($preorders->currentPage() - 1) * $preorders->perPage() + $loop->iteration }}</td>
-                            <td>{{ $item->user->name ?? '-' }}</td>
-                            <td>{{ $item->price->nama_harga ?? '-' }}</td>
-                            <td>Rp {{ number_format($item->price->harga ?? 0, 0, ',', '.') }}</td>
-                            <td>{{ $item->qty }}</td>
+                @empty
+                    <tr>
+                        <td colspan="9" class="text-center">Belum ada preorder</td>
+                    </tr>
+                @endforelse
+                </tbody>
+            </table>
 
-                            <td><span class="badge bg-{{ $item->status == 'selesai' ? 'success' : ($item->status == 'ditolak' ? 'danger' : ($item->status == 'proses' ? 'primary' : 'warning')) }}">{{ ucfirst($item->status) }}</span></td>
-
-                            {{-- Dropdown Status Preorder (Submit Form Biasa) --}}
-                            <td>
-                                <form action="{{ route('admin.preorders.updateStatus', $item->id) }}" method="POST">
-                                    @csrf
-                                    @method('PUT')
-                                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                                        <option value="pending"  {{ $item->status == 'pending' ? 'selected' : '' }}>Pending</option>
-                                        <option value="proses"   {{ $item->status == 'proses' ? 'selected' : '' }}>Proses</option>
-                                        <option value="selesai"  {{ $item->status == 'selesai' ? 'selected' : '' }}>Selesai</option>
-                                        <option value="ditolak"  {{ $item->status == 'ditolak' ? 'selected' : '' }}>Ditolak</option>
-                                    </select>
-                                </form>
-                            </td>
-
-                            <td>**Rp {{ number_format(($item->price->harga ?? 0) * $item->qty, 0, ',', '.') }}**</td>
-                            <td>{{ $item->created_at->format('d M Y') }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="9" class="text-center">Belum ada preorder</td>
-                        </tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            {{-- Pagination untuk Preorders --}}
-            <div class="d-flex justify-content-end mt-3">
-                {{ $preorders->appends(['orders_page' => request('orders_page')])->links() }}
-            </div>
+            {{ $preorders->appends(['orders_page' => request('orders_page')])->links() }}
         </div>
     </div>
 
 </div>
 
-{{-- ==========================
-MODAL PENGEMBALIAN DANA (REFUND)
-========================== --}}
+{{-- MODAL PENGEMBALIAN DANA (Tidak ada perubahan struktural) --}}
 <div class="modal fade" id="refundModal" tabindex="-1">
     <div class="modal-dialog">
         <form id="refundForm" method="POST" enctype="multipart/form-data">
@@ -225,12 +191,13 @@ MODAL PENGEMBALIAN DANA (REFUND)
                     </button>
                 </div>
             </div>
+
         </form>
     </div>
 </div>
 
 
-{{-- SCRIPT HANDLE STATUS (Tidak ada perubahan logika) --}}
+{{-- SCRIPT HANDLE STATUS (Tidak ada perubahan logika, hanya URL fix) --}}
 <script>
     /**
      * Menangani perubahan status untuk Order
@@ -244,6 +211,7 @@ MODAL PENGEMBALIAN DANA (REFUND)
         const baseUrl = '{{ url("admin/orders/updateStatus") }}';
 
         // 1. Cek kondisi untuk menampilkan Modal Refund
+        // Kita bandingkan nilai paymentMethod (yang sudah lowercase dari Blade) dengan 'transfer'
         if (selectedStatus === 'ditolak' && paymentMethod.toLowerCase() === 'transfer') {
 
             // Set data ke Modal Form
@@ -302,5 +270,5 @@ MODAL PENGEMBALIAN DANA (REFUND)
         }
     }
 </script>
-{{-- Pastikan Anda juga memiliki section @push('scripts') di layout.template Anda --}}
+
 @endsection
